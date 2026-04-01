@@ -161,24 +161,34 @@ public class PlayerController : MonoBehaviour
 
     void HandleAnimations()
     {
-        if (animator == null) return; 
+        if (animator == null) return;
 
         float x = Input.GetAxis("Horizontal");
         float z = Input.GetAxis("Vertical");
 
         float speedValue = new Vector3(x, 0, z).magnitude;
 
-        animator.SetFloat("Speed", speedValue, 0.5f, Time.deltaTime);
-        animator.SetBool("IsGrounded", isGrounded);
-
         bool isFalling = !isGrounded && Vector3.Dot(velocity, gravityDirection) > 0;
-        animator.SetBool("IsFalling", isFalling);
+
+        if (isFalling)
+        {
+            animator.Play("Falling Idle"); // exact animation name
+        }
+        else if (speedValue > 0.1f)
+        {
+            animator.Play("Running");
+        }
+        else
+        {
+            animator.Play("Idle");
+        }
     }
     void CheckFallDeath()
     {
         if (gameManager == null || gameManager.isGameOver) return;
 
-        if (!isGrounded && Vector3.Dot(velocity, gravityDirection) > 15f)
+        // if player is far from ground (falling into void)
+        if (!isGrounded && transform.position.y < -10f)
         {
             gameManager.GameOver("Fell Off!");
         }

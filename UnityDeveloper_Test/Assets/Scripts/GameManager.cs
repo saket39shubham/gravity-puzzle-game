@@ -1,5 +1,6 @@
 using TMPro;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class GameManager : MonoBehaviour
 {
@@ -11,10 +12,11 @@ public class GameManager : MonoBehaviour
     public bool isGameOver = false;
 
     [Header("Cubes (Assign in Inspector)")]
-    public GameObject[] cubes;   
+    public GameObject[] cubes;
     private int totalCubes;
     private int collectedCubes = 0;
-
+    [Header("UI")]
+    public GameObject gameOverPanel;
     void Start()
     {
         totalCubes = cubes.Length;  // auto count
@@ -53,11 +55,14 @@ public class GameManager : MonoBehaviour
         if (isGameOver) return;
 
         isGameOver = true;
+
         Debug.Log("GAME OVER: " + reason);
+
+        if (gameOverPanel != null)
+            gameOverPanel.SetActive(true);
 
         Time.timeScale = 0f;
     }
-
     public void CollectCube(GameObject cube)
     {
         collectedCubes++;
@@ -69,5 +74,11 @@ public class GameManager : MonoBehaviour
             Debug.Log("YOU WIN!");
             Time.timeScale = 0f;
         }
+    }
+
+    public void RestartGame()
+    {
+        Time.timeScale = 1f;
+        SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
     }
 }
