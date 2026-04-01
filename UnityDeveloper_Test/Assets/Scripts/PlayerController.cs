@@ -24,6 +24,7 @@ public class PlayerController : MonoBehaviour
     private Vector3 velocity;
     private bool isGrounded;
     Animator animator;
+    public GameManager gameManager;
     void Start()
     {
         controller = GetComponent<CharacterController>();
@@ -42,6 +43,7 @@ public class PlayerController : MonoBehaviour
         HandleGravityInput();
         ApplyGravity();
         HandleAnimations();
+        CheckFallDeath();
     }
 
     void HandleGroundCheck()
@@ -171,5 +173,14 @@ public class PlayerController : MonoBehaviour
 
         bool isFalling = !isGrounded && Vector3.Dot(velocity, gravityDirection) > 0;
         animator.SetBool("IsFalling", isFalling);
+    }
+    void CheckFallDeath()
+    {
+        if (gameManager == null || gameManager.isGameOver) return;
+
+        if (!isGrounded && Vector3.Dot(velocity, gravityDirection) > 15f)
+        {
+            gameManager.GameOver("Fell Off!");
+        }
     }
 }
