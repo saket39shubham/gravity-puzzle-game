@@ -1,56 +1,55 @@
 using UnityEngine;
 
+[RequireComponent(typeof(CharacterController))]
 public class PlayerController : MonoBehaviour
 {
     [Header("Movement")]
     public float speed = 5f;
-    public float jumpForce = 5f;
+    public Transform cameraTransform;
 
     [Header("Gravity")]
-    public float gravityStrength = 9.8f;
+    public float jumpForce = 5f;
+    public float gravityStrength = 35f;
     private Vector3 gravityDirection = Vector3.down;
+    private Vector3 selectedGravityDirection;
+
+    [Header("Ground Check")]
+    public LayerMask groundMask;
+    public float groundCheckDistance = 1.2f;
+
+    [Header("Hologram")]
+    public GameObject hologram;
 
     private CharacterController controller;
     private Vector3 velocity;
     private bool isGrounded;
 
-    [Header("Ground Check")]
-    public Transform groundCheck;
-    public float groundDistance = 0.6f;
-    public LayerMask groundMask;
-
-    private Vector3 selectedGravityDirection;
-
     void Start()
     {
         controller = GetComponent<CharacterController>();
         selectedGravityDirection = gravityDirection;
+
+        if (hologram != null)
+            hologram.SetActive(false);
     }
 
     void Update()
     {
         HandleGroundCheck();
         HandleMovement();
+        HandleRotation();
         HandleJump();
         HandleGravityInput();
         ApplyGravity();
     }
+
     void HandleGroundCheck()
     {
-        RaycastHit hit;
+        isGrounded = controller.isGrounded;
 
-        if (Physics.Raycast(groundCheck.position, gravityDirection, out hit, groundDistance, groundMask))
+        if (isGrounded && Vector3.Dot(velocity, gravityDirection) > 0)
         {
-            isGrounded = true;
-
-            if (Vector3.Dot(velocity, gravityDirection) > 0)
-            {
-                velocity = Vector3.zero;
-            }
-        }
-        else
-        {
-            isGrounded = false;
+            velocity = Vector3.zero;
         }
     }
 
@@ -59,8 +58,28 @@ public class PlayerController : MonoBehaviour
         float x = Input.GetAxis("Horizontal");
         float z = Input.GetAxis("Vertical");
 
-        Vector3 move = transform.right * x + transform.forward * z;
+        Vector3 forward = Vector3.ProjectOnPlane(cameraTransform.forward, -gravityDirection).normalized;
+        Vector3 right = Vector3.ProjectOnPlane(cameraTransform.right, -gravityDirection).normalized;
+
+        Vector3 move = forward * z + right * x;
+
         controller.Move(move * speed * Time.deltaTime);
+    }
+
+    void HandleRotation()
+    {
+        float x = Input.GetAxis("Horizontal");
+        float z = Input.GetAxis("Vertical");
+
+        Vector3 move = new Vector3(x, 0, z);
+
+        if (move.magnitude > 0.1f)
+        {
+            Vector3 forward = Vector3.ProjectOnPlane(cameraTransform.forward, -gravityDirection).normalized;
+
+            Quaternion targetRotation = Quaternion.LookRotation(forward, -gravityDirection);
+            transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 10f * Time.deltaTime);
+        }
     }
 
     void HandleJump()
@@ -85,23 +104,56 @@ public class PlayerController : MonoBehaviour
         if (Input.GetKeyDown(KeyCode.RightArrow))
             selectedGravityDirection = Vector3.right;
 
+        // Show hologram ONLY when holding arrow keys
+        bool arrowPressed =
+       Input.GetKeyDown(KeyCode.UpArrow) ||
+       Input.GetKeyDown(KeyCode.DownArrow) ||
+       Input.GetKeyDown(KeyCode.LeftArrow) ||
+       Input.GetKeyDown(KeyCode.RightArrow);
+
+        if (hologram != null)
+        {
+            if (arrowPressed)
+                hologram.SetActive(true);
+
+            if (hologram.activeSelf && selectedGravityDirection != Vector3.zero)
+            {
+                Quaternion lookRot = Quaternion.LookRotation(selectedGravityDirection);
+                hologram.transform.rotation = lookRot;
+
+                hologram.transform.position =
+                    transform.position + selectedGravityDirection * 1.5f;
+            }
+        }
+
+        // Apply gravity direction on Enter
         if (Input.GetKeyDown(KeyCode.Return))
         {
             gravityDirection = selectedGravityDirection;
             AlignPlayerToGravity();
+
+            if (hologram != null)
+                hologram.SetActive(false);
         }
     }
 
     void ApplyGravity()
     {
+        // Apply gravity
         velocity += gravityDirection * gravityStrength * Time.deltaTime;
-        velocity = Vector3.ClampMagnitude(velocity, 20f);
+
+        if (!isGrounded && Vector3.Dot(velocity, gravityDirection) > 0)
+        {
+            velocity += gravityDirection * gravityStrength * 2f * Time.deltaTime;
+        }
+
         controller.Move(velocity * Time.deltaTime);
     }
-
     void AlignPlayerToGravity()
     {
-        Quaternion targetRotation = Quaternion.FromToRotation(transform.up, -gravityDirection) * transform.rotation;
-        transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, 10f * Time.deltaTime);
+        Quaternion targetRotation =
+            Quaternion.FromToRotation(transform.up, -gravityDirection) * transform.rotation;
+
+        transform.rotation = targetRotation;
     }
 }
