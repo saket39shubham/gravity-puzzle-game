@@ -23,14 +23,14 @@ public class PlayerController : MonoBehaviour
     private CharacterController controller;
     private Vector3 velocity;
     private bool isGrounded;
-
+    Animator animator;
     void Start()
     {
         controller = GetComponent<CharacterController>();
         selectedGravityDirection = gravityDirection;
-
+        animator = GetComponent<Animator>();
         if (hologram != null)
-            hologram.SetActive(false);
+            hologram.SetActive(true);
     }
 
     void Update()
@@ -41,6 +41,7 @@ public class PlayerController : MonoBehaviour
         HandleJump();
         HandleGravityInput();
         ApplyGravity();
+        HandleAnimations();
     }
 
     void HandleGroundCheck()
@@ -106,18 +107,17 @@ public class PlayerController : MonoBehaviour
 
         // Show hologram ONLY when holding arrow keys
         bool arrowPressed =
-       Input.GetKeyDown(KeyCode.UpArrow) ||
-       Input.GetKeyDown(KeyCode.DownArrow) ||
-       Input.GetKeyDown(KeyCode.LeftArrow) ||
-       Input.GetKeyDown(KeyCode.RightArrow);
+      Input.GetKeyDown(KeyCode.UpArrow) ||
+      Input.GetKeyDown(KeyCode.DownArrow) ||
+      Input.GetKeyDown(KeyCode.LeftArrow) ||
+      Input.GetKeyDown(KeyCode.RightArrow);
 
         if (hologram != null)
         {
             if (arrowPressed)
+            {
                 hologram.SetActive(true);
 
-            if (hologram.activeSelf && selectedGravityDirection != Vector3.zero)
-            {
                 Quaternion lookRot = Quaternion.LookRotation(selectedGravityDirection);
                 hologram.transform.rotation = lookRot;
 
@@ -155,5 +155,21 @@ public class PlayerController : MonoBehaviour
             Quaternion.FromToRotation(transform.up, -gravityDirection) * transform.rotation;
 
         transform.rotation = targetRotation;
+    }
+
+    void HandleAnimations()
+    {
+        if (animator == null) return; 
+
+        float x = Input.GetAxis("Horizontal");
+        float z = Input.GetAxis("Vertical");
+
+        float speedValue = new Vector3(x, 0, z).magnitude;
+
+        animator.SetFloat("Speed", speedValue, 0.5f, Time.deltaTime);
+        animator.SetBool("IsGrounded", isGrounded);
+
+        bool isFalling = !isGrounded && Vector3.Dot(velocity, gravityDirection) > 0;
+        animator.SetBool("IsFalling", isFalling);
     }
 }
